@@ -2,11 +2,11 @@ package michal.chabiera;
 
 import org.apache.commons.math3.distribution.ExponentialDistribution;
 
-import java.io.FileNotFoundException;
-import java.io.PrintWriter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
-public class Symulacja {
+public class SymulacjaKolejka {
 
     public double lambda;
     public double mi;
@@ -16,7 +16,6 @@ public class Symulacja {
     public int obsluzone;
     public int zapytania;
     public int przyjsciaOdrzucone;
-    public int rozmiarBufora;
     public int liczbaKlientow;
     public int liczbaPomiarowKlientow;
     public int liczbaPomiarowKlientowBufor;
@@ -24,22 +23,21 @@ public class Symulacja {
 
     public double czasSymulacji;
     public double maxCzasSymulacji;
+    public int rozmiarBufora;
     public boolean stanSerwera = true;
 
     public List<Zdarzenie> listaZdarzen;
     public List<Zdarzenie> listaWyjsc;
     public List<Zdarzenie> listaZdarzenHistoria;
 
-    public Map<Integer, Integer> prawdopodobienstwa;
-
-    public Symulacja() throws FileNotFoundException {
+    public SymulacjaKolejka() {
         inicjalizuj();
         symuluj();
 
 
     }
 
-    private void symuluj() throws FileNotFoundException {
+    private void symuluj() {
         while (czasSymulacji < maxCzasSymulacji) {
             if (listaZdarzen.size() != 0) {
                 Zdarzenie tmp = listaZdarzen.get(0);
@@ -48,7 +46,6 @@ public class Symulacja {
             }
         }
         statystyki();
-        zapiszDoPliku();
     }
 
     private void obsluzZdarzenie(Zdarzenie zdarzenie) {
@@ -63,7 +60,7 @@ public class Symulacja {
                 } else {
                     long iloscWKolejce = listaZdarzen.stream().filter(x -> x.getTyp() == Zdarzenie.typZdarzenia.WYJSCIE).count()-1;
                     dodajZdarzenie(czasSymulacji, Zdarzenie.typZdarzenia.PRZYJSCIE, zdarzenie);
-                    if(iloscWKolejce < rozmiarBufora || rozmiarBufora == 0){
+                    if(iloscWKolejce < rozmiarBufora){
                         dodajZdarzenie(listaWyjsc.get(listaWyjsc.size() - 1).getCzas(), Zdarzenie.typZdarzenia.WYJSCIE, zdarzenie);
                     } else {
                         przyjsciaOdrzucone++;
@@ -77,7 +74,6 @@ public class Symulacja {
                 obsluzone++;
                 obliczSredniaLiczbeKlientow();
                 obliczSredniaLiczbeKlientowBufor();
-                rozkladPrawdopodobienstw();
                 break;
         }
 
@@ -90,13 +86,6 @@ public class Symulacja {
                 liczbaKlientow++;
             }
         }
-    }
-    private void rozkladPrawdopodobienstw(){
-        int liczbaWSystemie = (int) listaZdarzen.stream().filter(x -> x.getTyp() == Zdarzenie.typZdarzenia.WYJSCIE).count();
-        System.out.println("liczba w systemie: " + liczbaWSystemie);
-
-        prawdopodobienstwa.put(liczbaWSystemie, prawdopodobienstwa.get(liczbaWSystemie) == null ? 1 : prawdopodobienstwa.get(liczbaWSystemie) +1);
-
     }
 
     private void obliczSredniaLiczbeKlientowBufor() {
@@ -119,13 +108,7 @@ public class Symulacja {
         double czasObslugi = 0;
         for (Zdarzenie wyjscie : listaWyjsc) {
             czasWyjscia = wyjscie.getCzas();
-            try {
-
-                czasPrzyjscia = listaZdarzenHistoria.stream().filter(x -> x.getTyp() == Zdarzenie.typZdarzenia.PRZYJSCIE && x.getId() == wyjscie.getId()).findFirst().get().getCzas();
-            } catch (Exception ex) {
-
-                String asd = "asd";
-            }
+            czasPrzyjscia = listaZdarzenHistoria.stream().filter(x -> x.getTyp() == Zdarzenie.typZdarzenia.PRZYJSCIE && x.getId() == wyjscie.getId()).findFirst().get().getCzas();
 
             czasObslugi += czasWyjscia - czasPrzyjscia;
         }
@@ -174,36 +157,13 @@ public class Symulacja {
     }
 
     public void statystyki() {
-        System.out.println("Naplynelo:\t" + zapytania + "\tzadan!");
-        System.out.println("Obsluzone zapytania:\t" + obsluzone);
-        System.out.println("Odrzucone zapytania:\t" + przyjsciaOdrzucone);
-        System.out.println("Srednia liczba klientow:\t" + (double) liczbaKlientow / liczbaPomiarowKlientow);
-        System.out.println("Srednia liczba klientow w buforze:\t" + (double) liczbaKlientowBufor / liczbaPomiarowKlientowBufor);
-        System.out.println("Sredni czas w systemie:\t" + obliczSredniCzasWSystemie());
-        System.out.println("Sredni czas w buforze:\t" + obliczSredniCzasWBuforze());
-        System.out.println("Prawdopodobienstwa:");
-
-        for (Integer key : prawdopodobienstwa.keySet()) {
-            System.out.println(key + "\t" + (double) prawdopodobienstwa.get(key)/zapytania);
-        }
-    }
-    public void zapiszDoPliku() throws FileNotFoundException {
-
-        PrintWriter zapis = new PrintWriter("D:\\Users\\Michal\\IdeaProjects\\OAST-MM1\\wynik.txt");
-
-        zapis.println("Naplynelo:\t" + zapytania + "\tzadan!");
-        zapis.println("Obsluzone zapytania:\t" + obsluzone);
-        zapis.println("Odrzucone zapytania:\t" + przyjsciaOdrzucone);
-        zapis.println("Srednia liczba klientow:\t" + (double) liczbaKlientow / liczbaPomiarowKlientow);
-        zapis.println("Srednia liczba klientow w buforze:\t" + (double) liczbaKlientowBufor / liczbaPomiarowKlientowBufor);
-        zapis.println("Sredni czas w systemie:\t" + obliczSredniCzasWSystemie());
-        zapis.println("Sredni czas w buforze:\t" + obliczSredniCzasWBuforze());
-        zapis.println("Prawdopodobienstwa:");
-
-        for (Integer key : prawdopodobienstwa.keySet()) {
-            zapis.println(key + "\t" + (double) prawdopodobienstwa.get(key)/zapytania);
-        }
-        zapis.close();
+        System.out.println("Naplynelo: " + zapytania + " zadan!");
+        System.out.println("Obsluzone zapytania: " + obsluzone);
+        System.out.println("Odrzucone zapytania: " + przyjsciaOdrzucone);
+        System.out.println("Srednia liczba klientow: " + (double) liczbaKlientow / liczbaPomiarowKlientow);
+        System.out.println("Srednia liczba klientow w buforze: " + (double) liczbaKlientowBufor / liczbaPomiarowKlientowBufor);
+        System.out.println("Sredni czas w systemie: " + obliczSredniCzasWSystemie());
+        System.out.println("Sredni czas w buforze: " + obliczSredniCzasWBuforze());
     }
 
     public boolean czySerwerWolny() {
@@ -222,16 +182,13 @@ public class Symulacja {
         liczbaKlientowBufor = 0;
         liczbaPomiarowKlientowBufor = 0;
 
-        rozmiarBufora = 0;
         maxCzasSymulacji = 10000;
+        rozmiarBufora = 5;
         czasSymulacji = 0;
         stanSerwera = true;
         listaZdarzen = new ArrayList<Zdarzenie>();
         listaZdarzenHistoria = new ArrayList<Zdarzenie>();
         listaWyjsc = new ArrayList<Zdarzenie>();
-
-        prawdopodobienstwa = new HashMap<Integer, Integer>();
-
         rozkladLambda = new ExponentialDistribution(lambda);
         rozkladMi = new ExponentialDistribution(1 / mi);
         dodajZdarzenie(czasSymulacji, Zdarzenie.typZdarzenia.PRZYJSCIE, null);
