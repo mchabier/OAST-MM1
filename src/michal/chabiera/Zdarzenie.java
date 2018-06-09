@@ -2,8 +2,6 @@ package michal.chabiera;
 //https://github.com/mcialini/MM1
 //http://simjs.com/queuing/index.html
 
-
-
 public class Zdarzenie implements Comparable<Zdarzenie> {
     public enum typZdarzenia {PRZYJSCIE, WYJSCIE, NULL}
     private double czas;
@@ -12,10 +10,18 @@ public class Zdarzenie implements Comparable<Zdarzenie> {
 
     public static int globalId = 0;
 
-    public Zdarzenie( typZdarzenia typ, double czas){
+    public Zdarzenie(int id, typZdarzenia typ, double czas){
+        if(typ == typZdarzenia.PRZYJSCIE){
+            this.id = ++globalId;
             this.typ = typ;
             this.czas = czas;
+        } else {
+            this.id = id;
+            this.typ = typ;
+            this.czas = czas;
+        }
     }
+
     public Zdarzenie(typZdarzenia typ){
         this.typ = typ;
     } //uzywane dla zdarzenia null - praktycnzie niepotrzebne
@@ -25,6 +31,11 @@ public class Zdarzenie implements Comparable<Zdarzenie> {
     public typZdarzenia getTyp(){
         return this.typ;
     }
+
+    public int getId() {
+        return this.id;
+    }
+
     public int compareTo(Zdarzenie zdarzenie){
         if(this.getCzas() > zdarzenie.getCzas()){
             return 1;

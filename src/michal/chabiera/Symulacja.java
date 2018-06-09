@@ -26,6 +26,7 @@ public class Symulacja {
 
     public List<Zdarzenie> listaZdarzen;
     public List<Zdarzenie> listaWyjsc;
+    public List<Zdarzenie> listaZdarzenHistoria;
 
     public Symulacja() {
         inicjalizuj();
@@ -53,11 +54,11 @@ public class Symulacja {
                 zapytania++;
                 if (czySerwerWolny()) {
                     stanSerwera = false; // serwer zajety
-                    dodajZdarzenie(czasSymulacji, Zdarzenie.typZdarzenia.PRZYJSCIE);
-                    dodajZdarzenie(czasSymulacji, Zdarzenie.typZdarzenia.WYJSCIE);
+                    dodajZdarzenie(czasSymulacji, Zdarzenie.typZdarzenia.PRZYJSCIE, zdarzenie);
+                    dodajZdarzenie(czasSymulacji, Zdarzenie.typZdarzenia.WYJSCIE, zdarzenie);
                 } else {
-                    dodajZdarzenie(czasSymulacji, Zdarzenie.typZdarzenia.PRZYJSCIE);
-                    dodajZdarzenie(listaWyjsc.get(listaWyjsc.size() - 1).getCzas(), Zdarzenie.typZdarzenia.WYJSCIE);
+                    dodajZdarzenie(czasSymulacji, Zdarzenie.typZdarzenia.PRZYJSCIE, zdarzenie);
+                    dodajZdarzenie(listaWyjsc.get(listaWyjsc.size() - 1).getCzas(), Zdarzenie.typZdarzenia.WYJSCIE, zdarzenie);
                 }
                 break;
             case WYJSCIE:
@@ -74,42 +75,82 @@ public class Symulacja {
 
     private void obliczSredniaLiczbeKlientow() {
         liczbaPomiarowKlientow++;
-        for(Zdarzenie z : listaZdarzen){
-            if(z.getTyp() == Zdarzenie.typZdarzenia.WYJSCIE){
+        for (Zdarzenie z : listaZdarzen) {
+            if (z.getTyp() == Zdarzenie.typZdarzenia.WYJSCIE) {
                 liczbaKlientow++;
             }
         }
-//        liczbaKlientow--;
     }
+
     private void obliczSredniaLiczbeKlientowBufor() {
         liczbaPomiarowKlientowBufor++;
         int x = 0;
-        for(Zdarzenie z : listaZdarzen){
-            if(z.getTyp() == Zdarzenie.typZdarzenia.WYJSCIE){
+        for (Zdarzenie z : listaZdarzen) {
+            if (z.getTyp() == Zdarzenie.typZdarzenia.WYJSCIE) {
                 liczbaKlientowBufor++;
                 x++;
             }
         }
-        if(x != 0){
+        if (x != 0) {
             liczbaKlientowBufor--;
         }
-
     }
 
+    private double obliczSredniCzasWSystemie() {
+        double czasWyjscia = 0;
+        double czasPrzyjscia = 0;
+        double czasObslugi = 0;
+        for (Zdarzenie wyjscie : listaWyjsc) {
+            czasWyjscia = wyjscie.getCzas();
+            try {
 
+                czasPrzyjscia = listaZdarzenHistoria.stream().filter(x -> x.getTyp() == Zdarzenie.typZdarzenia.PRZYJSCIE && x.getId() == wyjscie.getId()).findFirst().get().getCzas();
+            } catch (Exception ex) {
 
-    private void dodajZdarzenie(double czasSymulacji, Zdarzenie.typZdarzenia typZdarzenia) {
+                String asd = "asd";
+            }
+
+            czasObslugi += czasWyjscia - czasPrzyjscia;
+        }
+
+        return czasObslugi / listaWyjsc.size();
+    }
+
+    private double obliczSredniCzasWBuforze() {
+        double czasWyjscia = 0;
+        double czasPrzyjscia = 0;
+        double czasObslugi = 0;
+        for (Zdarzenie wyjscie : listaWyjsc) {
+            czasWyjscia = wyjscie.getCzas();
+            czasPrzyjscia = listaZdarzenHistoria.stream().filter(x -> x.getTyp() == Zdarzenie.typZdarzenia.PRZYJSCIE && x.getId() == wyjscie.getId()+1).findFirst().get().getCzas();
+
+            if(czasWyjscia - czasPrzyjscia > 0){
+                czasObslugi += czasWyjscia - czasPrzyjscia;
+            }
+        }
+        return czasObslugi / listaWyjsc.size();
+    }
+
+    private void dodajZdarzenie(double czasSymulacji, Zdarzenie.typZdarzenia typZdarzenia, Zdarzenie zdarzenie) {
         double czasWylosowany = 0;
         if (typZdarzenia == Zdarzenie.typZdarzenia.PRZYJSCIE) {
             czasWylosowany = rozkladLambda.sample();
-            listaZdarzen.add(new Zdarzenie(Zdarzenie.typZdarzenia.PRZYJSCIE, czasSymulacji + czasWylosowany));
+            Zdarzenie noweZdarzenie = new Zdarzenie(0, Zdarzenie.typZdarzenia.PRZYJSCIE, czasSymulacji + czasWylosowany);
+            listaZdarzen.add(noweZdarzenie);
             Collections.sort(listaZdarzen);
+
+            listaZdarzenHistoria.add(noweZdarzenie);
+            Collections.sort(listaZdarzenHistoria);
         } else if (typZdarzenia == Zdarzenie.typZdarzenia.WYJSCIE) {
             czasWylosowany = rozkladMi.sample();
-            listaZdarzen.add(new Zdarzenie(Zdarzenie.typZdarzenia.WYJSCIE, czasSymulacji + czasWylosowany));
+            Zdarzenie noweZdarzenie = new Zdarzenie(zdarzenie.getId(), Zdarzenie.typZdarzenia.WYJSCIE, czasSymulacji + czasWylosowany);
+            listaZdarzen.add(noweZdarzenie);
             Collections.sort(listaZdarzen);
-            listaWyjsc.add(new Zdarzenie(Zdarzenie.typZdarzenia.WYJSCIE, czasSymulacji + czasWylosowany));
+            listaWyjsc.add(noweZdarzenie);
             Collections.sort(listaWyjsc);
+
+            listaZdarzenHistoria.add(noweZdarzenie);
+            Collections.sort(listaZdarzenHistoria);
         } else if (typZdarzenia == Zdarzenie.typZdarzenia.NULL) {
             listaZdarzen.add(new Zdarzenie(Zdarzenie.typZdarzenia.NULL));
         }
@@ -118,13 +159,16 @@ public class Symulacja {
     public void statystyki() {
         System.out.println("Naplynelo: " + zapytania + " zadan!");
         System.out.println("Obsluzone zapytania: " + obsluzone);
-        System.out.println("Srednia liczba klientow: " + (double) liczbaKlientow/liczbaPomiarowKlientow);
-        System.out.println("Srednia liczba klientow w buforze: " + (double) liczbaKlientowBufor/liczbaPomiarowKlientowBufor);
+        System.out.println("Srednia liczba klientow: " + (double) liczbaKlientow / liczbaPomiarowKlientow);
+        System.out.println("Srednia liczba klientow w buforze: " + (double) liczbaKlientowBufor / liczbaPomiarowKlientowBufor);
+        System.out.println("Sredni czas w systemie: " + obliczSredniCzasWSystemie());
+        System.out.println("Sredni czas w buforze: " + obliczSredniCzasWBuforze());
     }
 
     public boolean czySerwerWolny() {
         return stanSerwera;
     }
+
     public void inicjalizuj() {
         //Parametry
         lambda = 1;
@@ -139,10 +183,11 @@ public class Symulacja {
         czasSymulacji = 0;
         stanSerwera = true;
         listaZdarzen = new ArrayList<Zdarzenie>();
+        listaZdarzenHistoria = new ArrayList<Zdarzenie>();
         listaWyjsc = new ArrayList<Zdarzenie>();
         rozkladLambda = new ExponentialDistribution(lambda);
-        rozkladMi = new ExponentialDistribution(1/mi);
-        dodajZdarzenie(czasSymulacji, Zdarzenie.typZdarzenia.PRZYJSCIE);
+        rozkladMi = new ExponentialDistribution(1 / mi);
+        dodajZdarzenie(czasSymulacji, Zdarzenie.typZdarzenia.PRZYJSCIE, null);
     }
 
 }
